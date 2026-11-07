@@ -2,47 +2,43 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+from .const import CONF_API_KEY, DOMAIN, PLATFORMS
+from .coordinator import UpCoordinator
 from .up import UP
-from .const import DOMAIN, PLATFORMS, CONF_API_KEY  # Ensure constants are defined
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[str] = ["sensor"]  # Define platforms for easier reference
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Up Bank from a config entry."""
-    
-    # Initialize the UP instance with the API key
     api_key = entry.data[CONF_API_KEY]
-    up_bank_instance = UP(api_key)
+    session = async_get_clientsession(hass)
+    up_bank_instance = UP(api_key, session=session)
 
-    # Test the API connection to ensure readiness
+    coordinator = UpCoordinator(hass, up_bank_instance)
+
     try:
-        if not await up_bank_instance.test():
-            _LOGGER.error("Up Bank API not ready. Retrying later.")
-            raise ConfigEntryNotReady
+        await coordinator.async_config_entry_first_refresh()
     except Exception as err:
-        _LOGGER.error("Unexpected error during setup: %s", err)
+        _LOGGER.error("Failed to refresh Up Bank data during setup: %s", err)
         raise ConfigEntryNotReady from err
 
-    # Store the instance and forward the entry setup to specified platforms
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = up_bank_instance
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    )
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {
+        "api": up_bank_instance,
+        "coordinator": coordinator,
+    }
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
+
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    
-    # Unload platforms for the integration
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-    
-    # Remove instance data if unload was successful
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        hass.data[DOMAIN].pop(entry.entry_id, None)
 
     return unload_ok
-

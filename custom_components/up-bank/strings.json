@@ -8,6 +8,11 @@
                     "api_key": "API Key"
                 }
             }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to Up Bank API.",
+            "invalid_auth": "Invalid API Key.",
+            "unknown": "Unexpected error."
         }
     }
 }

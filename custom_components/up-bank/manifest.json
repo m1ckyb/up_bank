@@ -1,9 +1,9 @@
 {
     "domain": "up-bank",
     "name": "Up Bank Integration for Home Assistant",
-    "dependencies": ["http"],
+    "dependencies": [],
     "codeowners": ["@jay-oswald", "@richardsj"],
-    "version": "0.3.4",
+    "version": "0.3.5",
     "integration_type": "hub",
     "config_flow": true,
     "iot_class": "cloud_polling"
